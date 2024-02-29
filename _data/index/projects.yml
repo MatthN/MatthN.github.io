@@ -1,0 +1,4 @@
+- name: blog
+  descr: "Posts about my learnings in the field of data science."
+  image: /img/Data_science_01.png
+  github: https://github.com/MatthN

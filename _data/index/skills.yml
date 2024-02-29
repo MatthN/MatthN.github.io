@@ -1,0 +1,6 @@
+# skills section data
+
+label: Ability
+id : cs
+aspects: Python, SQL, R, Scrum, Critical thinking
+percentage: 70, 50, 80, 70, 90
