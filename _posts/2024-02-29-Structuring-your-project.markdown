@@ -61,7 +61,7 @@ joblib.dump(my_model, 'my_model.pkl')   # stores the model
 my_model = joblib.load('my_model.pkl')  # loads the model
 {% endhighlight %}
 
-Do the same for your predictions. I created a postgresql database with a simple data model to store my predictions. This then enabled me to build a report a simple dashboard in Power BI to compare my models on different metrics. You can drill down into observations with poor predictions and see what sets them aside.
+Do the same for your predictions. I created a postgresql database with a simple data model to store my predictions. This then enabled me to build a simple dashboard in Power BI to compare my models on different metrics. You can drill down into observations with poor predictions and see what sets them aside.
 
 ![Power BI dashboard comparing model performance.](/img/posts/Structuring_your_project/powerbi_report.png)
 
