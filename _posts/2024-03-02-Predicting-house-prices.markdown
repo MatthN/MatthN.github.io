@@ -86,7 +86,11 @@ X_train, X_val, y_train, y_val = train_test_split(X, y,
 We can have a look at how the distributions of our features look, as well as of our label.
 
 ```python
-X_train.hist(figsize=(16, 20), bins=50, xlabelsize=8, ylabelsize=8)
+y_train.hist(bins=50, xlabelsize=8, ylabelsize=8)
+plt.xlabel('House price')
+plt.ylabel('Count')
+plt.title('Histogram of house prices')
+plt.show()
 ```
 
 <img src="/img/posts/Predicting_house_prices/histogram_features.png" width="100%" height="600">
@@ -95,7 +99,7 @@ X_train.hist(figsize=(16, 20), bins=50, xlabelsize=8, ylabelsize=8)
 y_train.hist(figsize=(16, 20), bins=50, xlabelsize=8, ylabelsize=8)
 ```
 
-<img src="/img/posts/Predicting_house_prices/histogram_label.png" width="25%" height="auto">
+<img src="/img/posts/Predicting_house_prices/histogram_house_prices.png" width="25%" height="auto">
 
 
 We can see that a lot of the distributions are skewed. Our house prices have a long tail towards more expensive houses. The same can be seen for the grond living area. The total basement square footage has a peak at 0, because not all houses have a basement. This is also the case for garage area, open porch square footage, wood deck square footage, and others. This may complicate prediction for simple methods such as linear regressions.
@@ -172,6 +176,74 @@ preprocessor = ColumnTransformer(transformers=[
     ('ord_enc', ordinal_encode_pipe, ORDINAL_CATEGORICAL)
 ])
 ```
+
+## Linear Regression
+Earlier we saw that there is a strong correlation of the sales price with the overall quality of the house. Given this linear releationship we can do a first attempt with linear regression and see where that gets us. Given the large number of features in our data set we will make use of some regularization. In this case we can try Lasso regression which applies L1 regularization which tends to drive coefficients of unimportant features to 0. This can give us a first impression of which features are actually important.
+
+```python
+from sklearn.linear_model import LassoCV
+
+lm = Pipeline(steps=[
+    ('preprocessor', preprocessor),
+    ('lm', LassoCV(cv=5, max_iter=10_000))
+])
+lm.fit(X=X_train, y=y_train)
+```
+
+Let's have a look at which features got non-zero coefficients.
+
+```python
+coef = lm.named_steps['lm'].coef_
+feature_names = lm.named_steps['preprocessor'].get_feature_names_out()
+features = pd.DataFrame({
+    'feature': feature_names,
+    'coefficient': coef
+})
+features.sort_values('coefficient', ascending=False)[abs(features['coefficient']) > 0]
+```
+
+  |      | feature                | coefficient |
+  |------|------------------------|-------------|
+  | 208  | ord__OverallQual       | 20159.02    |
+  | 8    | num__GrLivArea         | 10053.32    |
+  | 218  | ord__TotRmsAbvGrd      | 6242.16     |
+  | 5    | num__1stFlrSF          | 5925.16     |
+  | 227  | ord_enc__BsmtExposure  | 2166.85     |
+  | 1    | num__BsmtFinSF1        | 1684.50     |
+  | 4    | num__TotalBsmtSF       | 1235.24     |
+  | 9    | num__GarageArea        | 933.87      |
+  | 210  | ord__YearBuilt         | 443.36      |
+  | 211  | ord__YearRemodAdd      | 436.62      |
+  | 220  | ord__GarageYrBlt       | 6.25        |
+
+As expected the overall quality got a large positive coefficient.
+
+We will use the RMSE evaluation metric, since this is the one that the Kaggle competition looks at.
+
+```python
+from sklearn.metrics import root_mean_squared_error
+y_pred = lm.predict(X=X_val)
+print(root_mean_squared_error(y_true=y_val, y_pred=y_pred))
+
+min_val = min(min(y_val), min(y_pred))
+max_val = max(max(y_val), max(y_pred))
+
+plt.plot([min_val, max_val], [min_val, max_val], linestyle='-', color='r')
+plt.scatter(x=y_val, y=y_pred, alpha=0.25)
+plt.xlabel('Actual')
+plt.ylabel('Predicted')
+plt.title('Lasso regression - actual vs. predicted')
+plt.show()
+```
+
+    38632.28843759117
+
+<img src="/img/posts/Predicting_house_prices/lasso_actual_vs_predicted.png" width="50%" height="auto">
+
+Looking at the plot of the actual versus predicted price, it is obvious that we are making too low predictions for the most expensive houses. It seems that only a part of the entire range can be represented using a linear approach.
+
+
+## Random Forest Regression
 
 
 
