@@ -12,6 +12,7 @@ image:
 ---
 
 ## Loading the Data and Initial Exploration
+The data that we will be working with is available on Kaggle [here](https://www.kaggle.com/competitions/house-prices-advanced-regression-techniques).
 We begin by loading the data and setting aside the label in a separate variable `y`.
 
 ```python
@@ -128,6 +129,49 @@ All features in the dataset have a description in `data_description.txt`. Based 
 - **categorical.** Features with a discrete number of possible values that do not have any particular order or hierarchy. We will apply one-hot encoding to these features.
 - **ordinal.** Categorical features where there exists a meaningful order or ranking among the categories, although the distance between the categories is not necessarily known or meaningful. These categories can be encoded by integers. For some of these features that is already the case, for others this still needs to be done.
 
+For each of the above we will define specific preprocessing steps. For the numerical features we first impute missing values using the `IterativeImputer`. Missing values are predicted based on the other features by Bayesian ridge regression (check [this](https://youtu.be/Z6HGJMUakmc?si=BCVO5VJchfKiRGM7) YouTube link for a good explanation on the subject). After that standardize the features using `StandardScaler`.
+
+For categorical features we impute with `SimpleImputer` applying the *most_frequent* strategy. This will replace missing values with the most prevalent category in the training set for that feature. Each feature is then one-hot encoded with `OneHotEncoder`. To prevent that this pipeline fails on a category value it has not seen in the training data we pass the `handle_unknown='ignore'` argument.
+
+For our ordinal features we have to make the distinction between those that are already encoded and those which are not. The ones that still require encoding can be handled with `OrdinalEncoder`. We provide it a list to specify the order of the values. Missing values in those features will receive encoded value -1. For those already encoded we use `SimpleImputer` to replace missing values with -1.
+
+```python
+from sklearn.experimental import enable_iterative_imputer
+from sklearn.impute import IterativeImputer
+from sklearn.preprocessing import StandardScaler
+from sklearn.pipeline import Pipeline
+from sklearn.compose import ColumnTransformer
+from sklearn.impute import SimpleImputer
+from sklearn.preprocessing import OneHotEncoder
+from sklearn.preprocessing import OrdinalEncoder
+
+numerical_pipe = Pipeline(steps=[
+    ('imputer', IterativeImputer(max_iter=10, random_state=5)),
+    ('transform', StandardScaler())
+])
+
+categorical_pipe = Pipeline(steps=[
+    ('imputer', SimpleImputer(strategy='most_frequent')),
+    ('encode', OneHotEncoder(handle_unknown='ignore'))
+])
+
+ordinal_encode_pipe = Pipeline(steps=[
+    ('encode', OrdinalEncoder(categories=ORDINAL_CATEGORICAL_ORDER,
+                              handle_unknown='use_encoded_value',
+                              unknown_value=-1))
+])
+
+ordinal_pipe = Pipeline(steps=[
+    ('imputer', SimpleImputer(strategy='constant', fill_value=-1))
+])
+
+preprocessor = ColumnTransformer(transformers=[
+    ('num', numerical_pipe, NUMERICAL),
+    ('cat', categorical_pipe, CATEGORICAL),
+    ('ord', ordinal_pipe, ORDINAL),
+    ('ord_enc', ordinal_encode_pipe, ORDINAL_CATEGORICAL)
+])
+```
 
 
 
