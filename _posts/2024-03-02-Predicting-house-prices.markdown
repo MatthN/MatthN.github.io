@@ -316,4 +316,21 @@ plt.show()
 
 The random forest regressor is performing much better than the lasso model. Still we can see that the model has difficulties with the most expensive houses where the predicted values are too low. On the other end of the spectrum the cheapest houses seem to be consistently predicted too high. This seems like a good moment to dive a bit deeper into the data to understand this better.
 
+## Deep Dive in the Data
+For the deep dive I have imported the data in Power Bi. This allows for easy drill down.
+Looking at the house price versus the ground living area shows that generally the price goes up as the house gets bigger (makes sense!).
+
+<img src="/img/posts/Predicting_house_prices/powerbi_price_vs_grlivarea.png" width="50%" height="auto">
+
+For houses with an overall quality of 10 there seem to be two clear exceptions to this rule which may pull that trend downards for that category. Zooming in on this we see that houses of the highest quality typically sell at a premium above the average price in the neighborhood.
+
+<img src="/img/posts/Predicting_house_prices/powerbi_price_vs_neighborhood.png" width="100%" height="auto">
+
+This is also the case in the Edwards neighborhood, but much less pronounced. The two outlying observations are both from this neighborhood. Meanwhile the two most expensive houses that get a much too low prediction are both from the NoRidge neighborhood where this effect is much more pronounced.
+
+On the low side we see that there are only a few observations of overall quality 1 or 2. The low prevalence of these groups could explain the bad performance.
+
+
+
+
 
