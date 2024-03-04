@@ -1,12 +1,12 @@
 ---
 layout: post
 title: Predicting House Prices
-excerpt: 
-categories: [Data Science]
+excerpt: ""
+categories: [Data Science, Regression]
 tags: [scikit-learn, regression, Kaggle]
 comments: true
 image:
-  feature: 
+  feature: /posts/Predicting_house_prices/Feature_image.png
   credit: 
   creditlink: 
 ---
@@ -32,24 +32,24 @@ We will start with some basic checks first to see what data types we have and ho
 X.info()
 ```
 
-    <class 'pandas.core.frame.DataFrame'>
-    RangeIndex: 1460 entries, 0 to 1459
-    Data columns (total 79 columns):
-    #   Column         Non-Null Count  Dtype  
-    ---  ------         --------------  -----  
-    0   MSSubClass     1460 non-null   int64  
-    1   MSZoning       1460 non-null   object 
-    2   LotFrontage    1201 non-null   float64
-    3   LotArea        1460 non-null   int64  
-    4   Street         1460 non-null   object 
-    ...  ...            ...            ...   
-    74  MiscVal        1460 non-null   int64  
-    75  MoSold         1460 non-null   int64  
-    76  YrSold         1460 non-null   int64  
-    77  SaleType       1460 non-null   object 
-    78  SaleCondition  1460 non-null   object 
-    dtypes: float64(3), int64(33), object(43)
-    memory usage: 901.2+ KB
+    >>> <class 'pandas.core.frame.DataFrame'>
+    >>> RangeIndex: 1460 entries, 0 to 1459
+    >>> Data columns (total 79 columns):
+    >>> #   Column         Non-Null Count  Dtype  
+    >>> ---  ------         --------------  -----  
+    >>> 0   MSSubClass     1460 non-null   int64  
+    >>> 1   MSZoning       1460 non-null   object 
+    >>> 2   LotFrontage    1201 non-null   float64
+    >>> 3   LotArea        1460 non-null   int64  
+    >>> 4   Street         1460 non-null   object 
+    >>> ...  ...            ...            ...   
+    >>> 74  MiscVal        1460 non-null   int64  
+    >>> 75  MoSold         1460 non-null   int64  
+    >>> 76  YrSold         1460 non-null   int64  
+    >>> 77  SaleType       1460 non-null   object 
+    >>> 78  SaleCondition  1460 non-null   object 
+    >>> dtypes: float64(3), int64(33), object(43)
+    >>> memory usage: 901.2+ KB
 
 
 ```python
@@ -57,9 +57,9 @@ mask = X_train.isna().sum()*100/X_train.shape[0] > 10
 X_train.columns[mask]
 ```
 
-    Index(['LotFrontage', 'Alley', 'MasVnrType', 'FireplaceQu', 'PoolQC', 'Fence',
-           'MiscFeature'],
-          dtype='object')
+    >>> Index(['LotFrontage', 'Alley', 'MasVnrType', 'FireplaceQu', 'PoolQC', 'Fence',
+    >>>        'MiscFeature'],
+    >>>       dtype='object')
 
 We can see that LotFrontage, Alley, MasVnrType, FireplaceQu, PoolQC, Fence and MiscFeature have more than 10% missing values. We will drop these features in our analysis.
 
@@ -72,7 +72,7 @@ Let's also check if we have a label for all observations.
 ```python
 sum(y.isna())
 ```
-    0
+    >>> 0
 
 We can now split our data into a training and validation set. For this we use `train_test_split` from scikit-learn. From here on we will continue with the training set and set aside the validation set.
 
@@ -179,6 +179,7 @@ preprocessor = ColumnTransformer(transformers=[
 
 ## Linear Regression
 Earlier we saw that there is a strong correlation of the sales price with the overall quality of the house. Given this linear releationship we can do a first attempt with linear regression and see where that gets us. Given the large number of features in our data set we will make use of some regularization. In this case we can try Lasso regression which applies L1 regularization which tends to drive coefficients of unimportant features to 0. This can give us a first impression of which features are actually important.
+We will use `LassoCV` which will determine the regularization penalty *alpha* automatically via cross-validation.
 
 ```python
 from sklearn.linear_model import LassoCV
@@ -216,7 +217,7 @@ features.sort_values('coefficient', ascending=False)[abs(features['coefficient']
   | 211  | ord__YearRemodAdd      | 436.62      |
   | 220  | ord__GarageYrBlt       | 6.25        |
 
-As expected the overall quality got a large positive coefficient.
+As expected the overall quality got a large positive coefficient. Do note that even though GarageArea gets a non-zero coefficient, GarageCars does not. This is because when dealing with highly correlated features, Lasso tends to select one and shrink the coefficients of the others to zero.
 
 We will use the RMSE evaluation metric, since this is the one that the Kaggle competition looks at.
 
@@ -236,7 +237,7 @@ plt.title('Lasso regression - actual vs. predicted')
 plt.show()
 ```
 
-    38632.28843759117
+    >>> 38632.28843759117
 
 <img src="/img/posts/Predicting_house_prices/lasso_actual_vs_predicted.png" width="50%" height="auto">
 
@@ -244,6 +245,75 @@ Looking at the plot of the actual versus predicted price, it is obvious that we 
 
 
 ## Random Forest Regression
+Given that our data does not seem to follow a linear trend across its entire range, we can try using a random forest regression model. This is a type of ensemble model that can handle non-linear releationships, and can capture interactions between features automatically. Even though it is very powerful, it is still quite easy to use and it can provide insight into the importance of each feature. First we will use the `GridSearchCV` method to search for the optimal value of *n_estimators*, the number of decision trees used. `GridSearchCV` will fit the model with every parameter value defined in our parameter grid and evaluate its performance by cross-validation. Notice that since we are using a pipeline we need to prepend our paramter name with our stepname and two underscores.
 
+```python
+from sklearn.ensemble import RandomForestRegressor
+from sklearn.model_selection import GridSearchCV
+
+rf = Pipeline(steps=[
+    ('preprocessor', preprocessor),
+    ('rf', RandomForestRegressor(random_state=5))
+])
+
+param_grid = {
+    'rf__n_estimators': range(100, 1001, 100)
+}
+
+rf_grid = GridSearchCV(estimator=rf, param_grid=param_grid,
+                       cv=5, scoring='neg_mean_squared_error',
+                       n_jobs=-1, verbose=2)
+rf_grid.fit(X=X_train, y=y_train)
+```
+
+We can plot the cross validation scores for each parameter value.
+
+```python
+mean_test_scores = -rf_grid.cv_results_['mean_test_score']
+n_estimators_values = [params['rf__n_estimators'] for params in rf_grid.cv_results_['params']]
+
+plt.figure(figsize=(10, 6))
+plt.plot(n_estimators_values, mean_test_scores, marker='o', linestyle='-')
+plt.title('CV Mean Test Score vs. Number of Trees (n_estimators)')
+plt.xlabel('Number of Trees (n_estimators)')
+plt.ylabel('CV Mean MSE')
+plt.show()
+```
+
+<img src="/img/posts/Predicting_house_prices/random_forest_cv_parameters.png" width="50%" height="auto">
+
+The best score was obtained by using 900 decision trees. Yet, we can see that our curve flattens off after 700 trees. Thus, we will use that value for our finetuned model.
+
+```python
+rf = Pipeline(steps=[
+    ('preprocessor', preprocessor),
+    ('rf', RandomForestRegressor(random_state=5, n_estimators=700))
+])
+
+rf.fit(X=X_train, y=y_train)
+```
+
+We can now evaluate the model the same way we did for the linear one above.
+
+```python
+y_pred = rf.predict(X=X_val)
+print(root_mean_squared_error(y_true=y_val, y_pred=y_pred))
+
+min_val = min(min(y_val), min(y_pred))
+max_val = max(max(y_val), max(y_pred))
+
+plt.plot([min_val, max_val], [min_val, max_val], linestyle='-', color='r')
+plt.scatter(x=y_val, y=y_pred, alpha=0.25)
+plt.xlabel('Actual')
+plt.ylabel('Predicted')
+plt.title('Random forest regression - actual vs. predicted')
+plt.show()
+```
+
+    >>> 26025.936828384132
+
+<img src="/img/posts/Predicting_house_prices/rf_actual_vs_predicted.png" width="50%" height="auto">
+
+The random forest regressor is performing much better than the lasso model. Still we can see that the model has difficulties with the most expensive houses where the predicted values are too low. On the other end of the spectrum the cheapest houses seem to be consistently predicted too high. This seems like a good moment to dive a bit deeper into the data to understand this better.
 
 
