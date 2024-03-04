@@ -398,10 +398,12 @@ plt.savefig('rf_sampled_actual_vs_predicted.png', dpi=300)
 
     >>> 24447.68667822811
 
-<img src="/img/posts/Predicting_house_prices/rf_sampled_actual_vs_predicted.png" width="100%" height="auto">
+<img src="/img/posts/Predicting_house_prices/rf_sampled_actual_vs_predicted.png" width="50%" height="auto">
 
 We can see that this improves the prediction somewhat, but not a whole lot.
 
+
+## Stacking
 
 
 
