@@ -330,6 +330,79 @@ This is also the case in the Edwards neighborhood, but much less pronounced. The
 
 On the low side we see that there are only a few observations of overall quality 1 or 2. The low prevalence of these groups could explain the bad performance.
 
+## Oversampling
+To address the issues described above we will try to increase the representation of these groups in our training data by over-sampling them. We'll add some noise to the numerical variables too.
+
+```python
+import numpy as np
+
+def add_additional_samples(X, y, OveralQual=[1,2,10], times=1,
+                           noise_percentage=5, cols=NUMERICAL,
+                           random_state=None):
+    
+    rng = np.random.RandomState(random_state)
+
+    mask = X['OverallQual'].isin(OveralQual)
+    X_sampled = X[mask].copy()
+    y_sampled = y[mask].copy()
+
+    for _ in range(times - 1):
+        X_sampled = pd.concat([X_sampled, X[mask].copy()], axis=0, ignore_index=True)
+        y_sampled = pd.concat([y_sampled, y[mask].copy()], axis=0, ignore_index=True)
+
+    for col in cols:
+        col_std = X_sampled[col].std()
+        noise_std = col_std * noise_percentage / 100
+        noise = rng.normal(0, noise_std, size=X_sampled[col].shape)
+
+        if X_sampled[col].min() >= 0:
+            adjusted_noise = np.where(X_sampled[col] + noise < 0, -X_sampled[col], noise)
+        else:
+            adjusted_noise = noise
+        
+        X_sampled[col] += adjusted_noise
+
+    X_augmented = pd.concat([X, X_sampled], axis=0, ignore_index=True)
+    y_augmented = pd.concat([y, y_sampled], axis=0, ignore_index=True)
+    
+    return X_augmented, y_augmented
+    
+
+X_train_oversampled, y_train_oversampled = add_additional_samples(X=X_train, y=y_train,
+                                                                  times=3)
+```
+
+Now let's retrain our model and evaluate once more.
+
+```python
+rf = Pipeline(steps=[
+    ('preprocessor', preprocessor),
+    ('rf', RandomForestRegressor(random_state=5, n_estimators=700))
+])
+
+rf.fit(X=X_train_oversampled, y=y_train_oversampled)
+
+y_pred = rf.predict(X=X_val)
+print(root_mean_squared_error(y_true=y_val, y_pred=y_pred))
+
+min_val = min(min(y_val), min(y_pred))
+max_val = max(max(y_val), max(y_pred))
+
+plt.plot([min_val, max_val], [min_val, max_val], linestyle='-', color='r')
+plt.scatter(x=y_val, y=y_pred, alpha=0.25)
+plt.xlabel('Actual')
+plt.ylabel('Predicted')
+plt.title('Random forest regression - actual vs. predicted')
+plt.savefig('rf_sampled_actual_vs_predicted.png', dpi=300)
+```
+
+    >>> 24447.68667822811
+
+<img src="/img/posts/Predicting_house_prices/rf_sampled_actual_vs_predicted.png" width="100%" height="auto">
+
+We can see that this improves the prediction somewhat, but not a whole lot.
+
+
 
 
 
