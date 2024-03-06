@@ -1,7 +1,7 @@
 ---
 layout: post
-title: Predicting House Prices
-excerpt: ""
+title: "Forecasting the Foundations: Advanced Analytics in Ames' Housing Market"
+excerpt: "In the captivating world of data science, every dataset tells a story, waiting to be unraveled by the curious and the bold. Today, we embark on an exhilarating journey through the streets of Ames, Iowa—a journey not just through its quaint neighborhoods but through the intricate labyrinth of data that holds the secrets to one of the most pressing questions in the real estate market: What determines the price of a house?"
 categories: [Data Science, Regression]
 tags: [scikit-learn, regression, Kaggle]
 comments: true
@@ -10,6 +10,11 @@ image:
   credit: 
   creditlink: 
 ---
+
+
+In the captivating world of data science, every dataset tells a story, waiting to be unraveled by the curious and the bold. Today, we embark on an exhilarating journey through the streets of Ames, Iowa—a journey not just through its quaint neighborhoods but through the intricate labyrinth of data that holds the secrets to one of the most pressing questions in the real estate market: **What determines the price of a house?**
+
+In this journey we will explore the data and try to understand what variables have an important impact on the price of a house. We will finetune several models, look into where they fall short and how we can improve on the predictions.
 
 ## Loading the Data and Initial Exploration
 The data that we will be working with is available on Kaggle [here](https://www.kaggle.com/competitions/house-prices-advanced-regression-techniques).
@@ -517,8 +522,8 @@ plt.show()
 
 <img src="/img/posts/Predicting_house_prices/xgb_feature_importances.png" width="50%" height="auto">
 
-This picture changed quite a bit from the one we got with the random forest regressor. The overall quality of the house is still by far the most important. However, the second most important, the land contour, is a feature that was not ranking highly before. Neighborhood now is the 4th most important feature.
+This picture changed quite a bit from the one we got with the random forest regressor. The overall quality of the house is still by far the most important. However, the second most important, the land contour, is a feature that was not ranking highly before. Our data is very imbalanced when it comes to this feature. Most houses are in the level category and only very few observations fall in one of the three remaining categories. Neighborhood, which we discussed above, is now the 4th most important feature.
 
 
 ## Conclusion
-
+We were able to improve RMSE from 38,632 using Lasso down to 22,311 by oversampling hard to predict groups and using XGBoost. The latter showed us that land contour and neighborhood, among other features, were significant for the harder to predict observations. The discussed models all have the advantage of explainability. This helped us gain insight into the data.
