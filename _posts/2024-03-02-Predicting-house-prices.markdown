@@ -99,7 +99,7 @@ plt.show()
 y_train.hist(figsize=(16, 20), bins=50, xlabelsize=8, ylabelsize=8)
 ```
 
-<img src="/img/posts/Predicting_house_prices/histogram_house_prices.png" width="25%" height="auto">
+<img src="/img/posts/Predicting_house_prices/histogram_house_prices.png" width="50%" height="auto">
 
 
 We can see that a lot of the distributions are skewed. Our house prices have a long tail towards more expensive houses. The same can be seen for the grond living area. The total basement square footage has a peak at 0, because not all houses have a basement. This is also the case for garage area, open porch square footage, wood deck square footage, and others. This may complicate prediction for simple methods such as linear regressions.
@@ -369,7 +369,7 @@ def add_additional_samples(X, y, OveralQual=[1,2,10], times=1,
     
 
 X_train_oversampled, y_train_oversampled = add_additional_samples(X=X_train, y=y_train,
-                                                                  times=3)
+                                                                  times=2, random_state=5)
 ```
 
 Now let's retrain our model and evaluate once more.
@@ -396,16 +396,129 @@ plt.title('Random forest regression - actual vs. predicted')
 plt.savefig('rf_sampled_actual_vs_predicted.png', dpi=300)
 ```
 
-    >>> 24447.68667822811
+    >>> 24867.259179129
 
 <img src="/img/posts/Predicting_house_prices/rf_sampled_actual_vs_predicted.png" width="50%" height="auto">
 
-We can see that this improves the prediction somewhat, but not a whole lot.
+This improved the the prediction somewhat. We can extract the feature importance from this model.
+
+```python
+importances = rf.named_steps['rf'].feature_importances_
+features = rf.named_steps['preprocessor'].get_feature_names_out()
+
+original_feature_names = []
+for feature in features:
+    without_prefix = feature.split('__')[1]
+    original_name = without_prefix.split('_')[0]
+    original_feature_names.append(original_name)
+
+feature_importances = pd.DataFrame({
+    'feature': original_feature_names,
+    'importances': importances
+}).groupby('feature')['importances'].sum().reset_index()
+
+feature_importances.sort_values('importances', ascending=True, inplace=True)
+mask = feature_importances['importances'] > 0.01
+
+plt.barh(y=feature_importances[mask]['feature'],
+        width=feature_importances[mask]['importances'])
+plt.xlabel('Importance')
+plt.title('Feature importance')
+plt.tight_layout()
+plt.show()
+```
+
+<img src="/img/posts/Predicting_house_prices/rf_feature_importances.png" width="50%" height="auto">
+
+This overlaps with the features that got non-zero coefficients in our Lasso regression model.
 
 
-## Stacking
+## Boosting
+Another method to improve on poor predictions is by applying boosting. This is an ensemble technique where you train models sequentially, where each subsequent model attempts to correct the errors made by the combination of the previous models. One such algorithm is XGBoost which uses decision trees as base learners. Each new model tries to predict the errors of the prior models. Predictions are then added together to make a final predicion.
+
+```python
+from xgboost import XGBRegressor
+
+xgb = Pipeline(steps=[
+    ('preprocessor', preprocessor),
+    ('xgb', XGBRegressor(random_state = 5))
+])
+
+param_grid = {
+    'xgb__n_estimators': range(25, 301, 25)
+}
+
+xgb_grid = GridSearchCV(estimator=xgb, param_grid=param_grid,
+                       cv=5, scoring='neg_mean_squared_error',
+                       n_jobs=-1, verbose=2)
+
+xgb_grid.fit(X_train_oversampled, y_train_oversampled)
+```
+
+<img src="/img/posts/Predicting_house_prices/xgb_cv_parameters_02.png" width="50%" height="auto">
+
+Using cross validation we determined the optimal number of trees to be 50. Let's train the final model and measure its performance.
 
 
+```python
+xgb = Pipeline(steps=[
+    ('preprocessor', preprocessor),
+    ('xgb', XGBRegressor(random_state = 5, n_estimators=50))
+])
+
+xgb.fit(X_train_oversampled, y_train_oversampled)
+
+y_pred = xgb.predict(X=X_val)
+print(root_mean_squared_error(y_true=y_val, y_pred=y_pred))
+
+min_val = min(min(y_val), min(y_pred))
+max_val = max(max(y_val), max(y_pred))
+
+plt.plot([min_val, max_val], [min_val, max_val], linestyle='-', color='r')
+plt.scatter(x=y_val, y=y_pred, alpha=0.25)
+plt.xlabel('Actual')
+plt.ylabel('Predicted')
+plt.title('XGB regression - actual vs. predicted')
+plt.show()
+```
+
+    >>> 22310.753975637475
+
+<img src="/img/posts/Predicting_house_prices/xgb_actual_vs_predicted.png" width="50%" height="auto">
 
 
+Since we are still using decision trees also this model allows us to get the feature importances from it.
+
+```python
+importances = xgb.named_steps['xgb'].feature_importances_
+features = xgb.named_steps['preprocessor'].get_feature_names_out()
+
+original_feature_names = []
+for feature in features:
+    without_prefix = feature.split('__')[1]
+    original_name = without_prefix.split('_')[0]
+    original_feature_names.append(original_name)
+
+feature_importances = pd.DataFrame({
+    'feature': original_feature_names,
+    'importances': importances
+}).groupby('feature')['importances'].sum().reset_index()
+
+feature_importances.sort_values('importances', ascending=True, inplace=True)
+mask = feature_importances['importances'] > 0.01
+
+plt.barh(y=feature_importances[mask]['feature'],
+        width=feature_importances[mask]['importances'])
+plt.xlabel('Importance')
+plt.title('Feature importance')
+plt.tight_layout()
+plt.show()
+```
+
+<img src="/img/posts/Predicting_house_prices/xgb_feature_importances.png" width="50%" height="auto">
+
+This picture changed quite a bit from the one we got with the random forest regressor. The overall quality of the house is still by far the most important. However, the second most important, the land contour, is a feature that was not ranking highly before. Neighborhood now is the 4th most important feature.
+
+
+## Conclusion
 
