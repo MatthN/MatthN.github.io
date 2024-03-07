@@ -3,7 +3,7 @@ layout: post
 title: "Forecasting the Foundations: Advanced Analytics in Ames' Housing Market"
 excerpt: "In the captivating world of data science, every dataset tells a story, waiting to be unraveled by the curious and the bold. Today, we embark on an exhilarating journey through the streets of Ames, Iowa—a journey not just through its quaint neighborhoods but through the intricate labyrinth of data that holds the secrets to one of the most pressing questions in the real estate market: What determines the price of a house?"
 categories: [Data Science, Regression]
-tags: [scikit-learn, regression, Kaggle]
+tags: [scikit-learn, regression, Kaggle, random forest, xgboost, lasso]
 comments: true
 image:
   feature: /posts/Predicting_house_prices/Feature_image.png
