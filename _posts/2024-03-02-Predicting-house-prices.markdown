@@ -79,7 +79,7 @@ sum(y.isna())
 ```
     >>> 0
 
-We can now split our data into a training and validation set. For this we use `train_test_split` from scikit-learn. From here on we will continue with the training set and set aside the validation set.
+At this point we'll split our data into a training and validation set. For this we use `train_test_split` from scikit-learn. From here on we will continue with the training set and set aside the validation set.
 
 ```python
 from sklearn.model_selection import train_test_split
@@ -107,7 +107,7 @@ y_train.hist(figsize=(16, 20), bins=50, xlabelsize=8, ylabelsize=8)
 <img src="/img/posts/Predicting_house_prices/histogram_house_prices.png" width="50%" height="auto">
 
 
-We can see that a lot of the distributions are skewed. Our house prices have a long tail towards more expensive houses. The same can be seen for the grond living area. The total basement square footage has a peak at 0, because not all houses have a basement. This is also the case for garage area, open porch square footage, wood deck square footage, and others. This may complicate prediction for simple methods such as linear regressions.
+A lot of the distributions are skewed, resembling a log-normal or exponential distribution. Our house prices have a long tail towards more expensive houses. The same can be seen for the ground living area. The total basement square footage has a peak at 0, because not all houses have a basement. This is also the case for garage area, open porch square footage, wood deck square footage, and others. This may complicate prediction for simple methods such as linear regressions.
 
 Finally, let's have a look at the correlation between features, and at the correlation of each feature with the label.
 
@@ -129,16 +129,16 @@ plt.show()
 
 <img src="/img/posts/Predicting_house_prices/heatmap_correlations.png" width="75%" height="auto">
 
-We can see that the overall quality of the house has the highest positive correlation with its price. We can also see that GarageCars (the number of cars that fit in the garage) strongly correlates with the garage area, or that the year the garage was built correlates with the year the house was built. All these things make sense intuitively.
+The overall quality of the house has the highest positive correlation with the price. We can also see that GarageCars (the number of cars that fit in the garage) strongly correlates with the garage area, or that the year the garage was built correlates with the year the house was built. All these things make sense intuitively.
 
 
 ## Setting Up a Preprocessing Pipeline
-All features in the dataset have a description in `data_description.txt`. Based on their description, I divided the features into
+All features in the dataset have a description in `data_description.txt`. Based on their description, I divided the features into the below groups.
 - **numerical.** Measurable quantities represented by numerical values (integers or floats).
 - **categorical.** Features with a discrete number of possible values that do not have any particular order or hierarchy. We will apply one-hot encoding to these features.
 - **ordinal.** Categorical features where there exists a meaningful order or ranking among the categories, although the distance between the categories is not necessarily known or meaningful. These categories can be encoded by integers. For some of these features that is already the case, for others this still needs to be done.
 
-For each of the above we will define specific preprocessing steps. For the numerical features we first impute missing values using the `IterativeImputer`. Missing values are predicted based on the other features by Bayesian ridge regression (check [this](https://youtu.be/Z6HGJMUakmc?si=BCVO5VJchfKiRGM7) YouTube link for a good explanation on the subject). After that standardize the features using `StandardScaler`.
+For each of the above we will define specific preprocessing steps. For the numerical features we first impute missing values using the `IterativeImputer`. Missing values are predicted based on the other features by Bayesian ridge regression (check [this](https://youtu.be/Z6HGJMUakmc?si=BCVO5VJchfKiRGM7) YouTube link for a good explanation on the subject). Next the features are standardized using `StandardScaler`.
 
 For categorical features we impute with `SimpleImputer` applying the *most_frequent* strategy. This will replace missing values with the most prevalent category in the training set for that feature. Each feature is then one-hot encoded with `OneHotEncoder`. To prevent that this pipeline fails on a category value it has not seen in the training data we pass the `handle_unknown='ignore'` argument.
 
@@ -224,7 +224,7 @@ features.sort_values('coefficient', ascending=False)[abs(features['coefficient']
 
 As expected the overall quality got a large positive coefficient. Do note that even though GarageArea gets a non-zero coefficient, GarageCars does not. This is because when dealing with highly correlated features, Lasso tends to select one and shrink the coefficients of the others to zero.
 
-We will use the RMSE evaluation metric, since this is the one that the Kaggle competition looks at.
+We will use the RMSE evaluation metric, since this is the one that the Kaggle competition from which we got the data set looks at.
 
 ```python
 from sklearn.metrics import root_mean_squared_error
