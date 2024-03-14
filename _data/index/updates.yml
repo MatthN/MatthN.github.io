@@ -5,3 +5,6 @@
 - date: 2024-03-10
   description:
     - desc: "New post 'Forecasting the Foundations: Advanced Analytics in Ames' Housing Market'"
+- date: 2024-03-14
+  description:
+    - desc: "New post 'Piece of Pi: Estimating Pi by Monte Carlo Simulation'"

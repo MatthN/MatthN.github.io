@@ -1,6 +1,6 @@
 ---
 layout: post
-title: "Piece of Pi"
+title: "Piece of Pi: Estimating Pi by Monte Carlo Simulation"
 excerpt: "What better way to celebrate Pi Day than by exploring the fascinating world of pi through a hands-on project? In this blog post, we'll dive into a simple yet engaging Python application that utilizes Monte Carlo simulations to estimate the value of pi."
 categories: [Programming]
 tags: [mathematics, pi]
