@@ -106,5 +106,62 @@ print(root_mean_squared_error(y_true=y_val, y_pred=y_pred))
 
 The best option of 72 estimators is close to the previously found 50, and also the test scores are comparable.
 
-Random search is great for its simplicity. It allows you to explore a vaster hyperparameter space and potentially find more optimal configurations than you otherwise would with grid search. On the flip side, since the search is not exhaustive the optimal configuration might not be found. The exploration of the search space could be uneven due to randomness. This can already be seen in the above example where sampled values were 38, 170, 72, 84, 287, 272 and 233. This strategy also treats each hyperparameter as independent. This can also lead to inefficient sampling in case some are strongly correlated. 
+Random search is great for its simplicity. It allows you to explore a vaster hyperparameter space and potentially find more optimal configurations than you otherwise would with grid search. On the flip side, since the search is not exhaustive the optimal configuration might not be found. The exploration of the search space could be uneven due to randomness. This can already be seen in the above example where sampled values were 38, 170, 72, 84, 287, 272 and 233. This strategy also treats each hyperparameter as independent. This can also lead to inefficient sampling in case some are strongly correlated.
 
+
+### Bayesian Optimization
+We have now established that there is a need for an algorithm that does not perform an exhaustive search, yet can still explore the hyperparameter space more efficiently than by sampling random points.
+
+
+```python
+from skopt import gp_minimize
+from skopt.learning import GaussianProcessRegressor
+from skopt.learning.gaussian_process.kernels import ConstantKernel, RBF
+from skopt.space import Integer
+from skopt.utils import use_named_args
+from sklearn.model_selection import cross_val_score
+
+noise = 0.25
+rbf = ConstantKernel(1.0) * RBF(length_scale=1.0)
+gpr = GaussianProcessRegressor(kernel=rbf, alpha=noise**2)
+
+space = [
+    Integer(1, 300, name='n_estimators')
+]
+
+@use_named_args(space)
+def objective(n_estimators):
+    xgb = Pipeline(steps=[
+        ('preprocessor', preprocessor),
+        ('xgb', XGBRegressor(
+            n_estimators=n_estimators,
+            random_state=5
+        ))
+    ])
+    
+    mse_scores = -cross_val_score(xgb, X_train_oversampled, y_train_oversampled, cv=5, scoring='neg_mean_squared_error')
+    
+    return np.mean(mse_scores)
+
+result = gp_minimize(objective, space, n_calls=7, random_state=5, verbose=True,
+                     base_estimator=gpr, acq_func='EI', xi=0.01, n_random_starts=5)
+
+print("Best parameters:", result.x)
+```
+    >>> Best parameters: [63]
+
+```python
+xgb = Pipeline(steps=[
+    ('preprocessor', preprocessor),
+    ('xgb', XGBRegressor(
+        n_estimators=63,
+        random_state=5
+    ))
+])
+
+xgb.fit(X_train_oversampled, y_train_oversampled)
+
+y_pred = xgb.predict(X=X_val)
+print(root_mean_squared_error(y_true=y_val, y_pred=y_pred))
+```
+    >>> 22353.68210309008
