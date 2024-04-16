@@ -69,99 +69,114 @@ xgb.named_steps['xgb'].get_params()
     'validate_parameters': None,
     'verbosity': None}
 
-Testing all points in a grid on your hyperparameter space quickly becomes undesirable or even infeasible.
+If model training is expensive, testing all points in a grid on your hyperparameter space quickly becomes undesirable or even infeasible. For example, creating a grid for 3 hyperparameters with each 10 values to evaluate already gives in 1,000 possible combinations.
 
 ### Random Search
-A simple way to deal with the large possible number of possible configurations is to perform a **random search**. Instead of testing each possible option you pick $$n$$ random configurations and see which performs best.
-
-Taking the house prices [example]({{ site.url }}/articles/2024-03/Predicting-house-prices) from before we can apply random search to find a good 'n_estimators' for the XGBoost regressor. Let's run this for 12 iterations since there were also 12 points in the grid used before.
+A simple way to deal with the large number of possible configurations is to perform a **random search**. Instead of testing each possible option you pick $$n$$ random configurations and see which performs best. Let's implement an example using `RandomizedSearchCV` from scikit-learn.
 
 ```python
+from sklearn.datasets import fetch_california_housing
+from sklearn.model_selection import train_test_split
 from sklearn.model_selection import RandomizedSearchCV
+from xgboost import XGBRegressor
 from scipy.stats import randint
 
-xgb = Pipeline(steps=[
-    ('preprocessor', preprocessor),
-    ('xgb', XGBRegressor(random_state=5))
-])
+# import data and create training set
+X, y = fetch_california_housing(return_X_y=True)
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=7)
 
+# define regression model
+xgb = XGBRegressor(random_state=7)
+
+# define range from which n_estimator candidates can be sampled
 param_dist = {
-    'xgb__n_estimators': randint(25, 300)
+    'n_estimators': randint(1, 300)
 }
 
+# execute random search
 xgb_random = RandomizedSearchCV(estimator=xgb, param_distributions=param_dist,
                                 cv=5, scoring='neg_mean_squared_error',
-                                n_iter=12, verbose=3, n_jobs=-1)
-xgb_random.fit(X=X_train_oversampled, y=y_train_oversampled)
+                                n_iter=10, verbose=3, n_jobs=-1, random_state=7)
+xgb_random.fit(X_train, y_train)
 
+# print best result
 print(xgb_random.best_params_)
 ```
-    >>> {'xgb__n_estimators': 72}
 
-``` python
-y_pred = xgb_random.predict(X=X_val)
-print(root_mean_squared_error(y_true=y_val, y_pred=y_pred))
-```
-    >>> 22324.43301306317
+    >>> Fitting 5 folds for each of 10 candidates, totalling 50 fits
+    >>> {'n_estimators': 212}
 
-The best option of 72 estimators is close to the previously found 50, and also the test scores are comparable.
 
-Random search is great for its simplicity. It allows you to explore a vaster hyperparameter space and potentially find more optimal configurations than you otherwise would with grid search. On the flip side, since the search is not exhaustive the optimal configuration might not be found. The exploration of the search space could be uneven due to randomness. This can already be seen in the above example where sampled values were 38, 170, 72, 84, 287, 272 and 233. This strategy also treats each hyperparameter as independent. This can also lead to inefficient sampling in case some are strongly correlated.
+This minimal example already required 50 model fits.
+
+Random search is great for its simplicity. It allows you to explore a vaster hyperparameter space and potentially find more optimal configurations than you otherwise would with grid search. On the flip side, since the search is not exhaustive the optimal configuration might not be found. The exploration of the search space could be uneven due to randomness. The strategy also treats each hyperparameter as independent. This can lead to inefficient sampling in case some are strongly correlated.
 
 
 ### Bayesian Optimization
-We have now established that there is a need for an algorithm that does not perform an exhaustive search, yet can still explore the hyperparameter space more efficiently than by sampling random points.
+We have now established that there is a need for an algorithm that does not perform an exhaustive search, yet can still explore the hyperparameter space more efficiently than by sampling random points. This is where Bayesian optimization comes in. It is used to optimize black-box functions that are expensive to evaluate. The unknown objective function is modelled by a probabilistic surrogate model, often a Guassian process (see below). The model is updated after every iteration to incorporate the new information and determine the next sampling point. The algorithm balances exploration (sampling uncertain regions) and exploitation (sampling regions that likely contain the optimum) in order to find the globabl optimum of the objective function in a minimal number of iterations.
 
+Gaussian processes define distributions over functions, where any finite set of points follows a multivariate Gaussian distribution. These distributions are characterized by a mean function and a covariance function, also known as a kernel, which encodes the smoothness and correlation properties of the functions.
+
+Let's take the California housing example from above and start by defining our objective function.
 
 ```python
-from skopt import gp_minimize
-from skopt.learning import GaussianProcessRegressor
-from skopt.learning.gaussian_process.kernels import ConstantKernel, RBF
-from skopt.space import Integer
-from skopt.utils import use_named_args
 from sklearn.model_selection import cross_val_score
 
-noise = 0.25
-rbf = ConstantKernel(1.0) * RBF(length_scale=1.0)
-gpr = GaussianProcessRegressor(kernel=rbf, alpha=noise**2)
-
-space = [
-    Integer(1, 300, name='n_estimators')
-]
-
-@use_named_args(space)
 def objective(n_estimators):
-    xgb = Pipeline(steps=[
-        ('preprocessor', preprocessor),
-        ('xgb', XGBRegressor(
-            n_estimators=n_estimators,
-            random_state=5
-        ))
-    ])
-    
-    mse_scores = -cross_val_score(xgb, X_train_oversampled, y_train_oversampled, cv=5, scoring='neg_mean_squared_error')
-    
+    xgb = XGBRegressor(n_estimators=n_estimators, random_state=7)
+    mse_scores = -cross_val_score(xgb, X_train_scaled, y_train, cv=5, scoring='neg_mean_squared_error')
     return np.mean(mse_scores)
-
-result = gp_minimize(objective, space, n_calls=7, random_state=5, verbose=True,
-                     base_estimator=gpr, acq_func='EI', xi=0.01, n_random_starts=5)
-
-print("Best parameters:", result.x)
 ```
-    >>> Best parameters: [63]
+
+In order to fit the Gaussian process regressor we will first need to take some random samples to get started.
 
 ```python
-xgb = Pipeline(steps=[
-    ('preprocessor', preprocessor),
-    ('xgb', XGBRegressor(
-        n_estimators=63,
-        random_state=5
-    ))
-])
+from skopt.learning import GaussianProcessRegressor
+from skopt.learning.gaussian_process.kernels import ConstantKernel, RBF
 
-xgb.fit(X_train_oversampled, y_train_oversampled)
+np.random.seed(5)
 
-y_pred = xgb.predict(X=X_val)
-print(root_mean_squared_error(y_true=y_val, y_pred=y_pred))
+X_samples = np.array([])
+y_samples = np.array([])
+
+# create 3 random samples
+for x_sample in np.random.randint(bounds[:,0], bounds[:,1]+1, size=3):
+    X_samples = np.append(X_samples, x_sample)
+    y_samples = np.append(y_samples, objective(x_sample))
+
+X_samples = X_samples.reshape(-1, 1)
+
+# define the Gaussian process regressor and fit it to the samples
+rbf = ConstantKernel(1.0) * RBF(length_scale=1.0)
+gpr = GaussianProcessRegressor(kernel=rbf, n_restarts_optimizer=50)
+gpr.fit(X_samples, y_samples)
+
 ```
-    >>> 22353.68210309008
+
+Setting 'n_restarts_optimizer' increases the chance of finding better hyperparameters for the model. When keeping this at the default (Which is 1) I sometimes noticed strange results. Now that the Gaussian process regressor (GPR) has been fitted we can plot the result.
+
+```
+import matplotlib.pyplot as plt
+
+def plot_gpr(X_grid, X_samples, y_samples, gpr, next_sample=None):
+    y_pred, sigma = gpr.predict(X_grid, return_std = True)
+    y_pred_flat = y_pred.ravel()
+    X_grid_flat = X_grid.ravel()
+    plt.plot(X_grid, y_pred, 'b-', label='GPR Predictions')
+    plt.fill_between(X_grid_flat, y_pred_flat - 1.96 * sigma, y_pred_flat + 1.96 * sigma, alpha=0.2, color='gray')
+    plt.scatter(X_samples, y_samples, color='red', label='Evaluated Points')
+    if next_sample:
+        plt.axvline(x=next_sample, color='b', linestyle='--', label='Next Sample')
+    plt.xlabel('x')
+    plt.ylabel('f(x)')
+    plt.title('Gaussian Process Regression')
+    plt.legend()
+
+X_grid = np.linspace(1, 300, 1000).reshape(-1, 1)
+plot_gpr(X_grid=X_grid, X_samples=X_samples, y_samples=y_samples, gpr=gpr)
+```
+
+<img src="/img/posts/BayesOpt/gpr_iteration_00.png" width="50%">
+
+The picture shows that where we have sampled the objective function the uncertainty is zero. Uncertainty increases with distance from the samples. In reality the samples are not entirely noise-free.
+
