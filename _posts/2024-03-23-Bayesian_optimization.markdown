@@ -22,7 +22,7 @@ Hyperparameters are set before model training. They impact the model behavior.
 Tuning the model's hyperparameters can become quite complex due to their number, types (discrete, continuous, categorical, Boolean) and interdependence. Examples of one hyperparameter impacting the value of another are the learning rate and batch size in gradient descent, the number of clusters and distance metric in K-means clustering, or the window size and forecast horizon in time series forecasting.
 
 ## Hyperparameter tuning
-### The Limitation of Grid Search
+### Grid Search
 The simplest way to approach this task is to create a grid where each point represents a combination of hyperparameter values and then test every configuration. This is the approach that I took to find the optimal number of estimators for random forest and the XGBoost regressors [here]({{ site.url }}/articles/2024-03/Predicting-house-prices). However, this ignored the fact that there are many more hyperparameters that can be tuned for these models. Take for example the XGBoost regressor from before.
 
 ```python
@@ -69,7 +69,7 @@ xgb.named_steps['xgb'].get_params()
     'validate_parameters': None,
     'verbosity': None}
 
-If model training is expensive, testing all possible combinations in the hyperparameter space quickly becomes undesirable or even infeasible. For example, creating a grid for 3 hyperparameters with each 10 values to evaluate already gives 1,000 possible combinations.
+If model training is expensive, testing all possible combinations in the hyperparameter space quickly becomes undesirable or even infeasible. For example, creating a grid for 3 hyperparameters with each 10 values to evaluate already gives 1,000 possible combinations. This is the **curse of dimensionality**. Adding hyperparameters exponentially increases the number of possible configurations.
 
 ### Random Search
 A simple way to deal with the large number of possible configurations is to perform a **random search**. Instead of testing each possible option you pick $$n$$ random configurations and see which performs best. Let's implement an example using `RandomizedSearchCV` from scikit-learn.
@@ -245,6 +245,9 @@ The result after 7 iterations (and 3 initial random points) is shown below.
 
 This shows that our objective functions seems to reach a plateau, something you would expect with the `n_estimators` parameter. Once you have sufficient, adding more estimators does not improve the model performance.
 
+The downside of Bayesian optimization is that it requires the information from the previous iterations. Therefore, it is very difficult to parallelize.
+
+Let's look at some libraries that have Bayesian optimization methods.
 
 #### scikit-optimize
 The scikit-optimize package has an API to execute Bayesian optimization which is very intuitive. You define the search space and objective function, and then let `gp_minimize` do the work.
@@ -279,7 +282,7 @@ The `noise` parameter allows you to specify the noise level of the observations 
 
 
 #### optuna
-Another library that offers Bayesian optimization is optuna. The setup API is similar to scikit-optimize. There is a possibility to store results that can be visualized afterwards in Optuna Dashboard, a VS code plugin.
+Another library that offers Bayesian optimization is optuna. The API is similar to scikit-optimize. There is a possibility to store results that can be visualized afterwards in Optuna Dashboard, a VS code plugin.
 
 ```python
 import optuna
@@ -297,3 +300,12 @@ study = optuna.create_study(direction='minimize', sampler=GPSampler(n_startup_tr
                             study_name=study_name, storage=storage)
 study.optimize(objective, n_trials=10)
 ```
+
+## Conclusion
+Once the hyperparameter space becomes large there can be a clear upside to using Bayesian optimization compared to random search or grid search. The algorithm explores the search space in a more efficient way. This comes with the downside that parallelization is much more difficult.
+
+## Resources
+- [Liu, P. (2023). Bayesian Optimization: Theory and Practice Using Python (1st ed.). Apress Berkeley, CA. https://doi.org/10.1007/978-1-4842-9063-7](https://doi.org/10.1007/978-1-4842-9063-7)
+- [https://krasserm.github.io/2018/03/21/bayesian-optimization/](https://krasserm.github.io/2018/03/21/bayesian-optimization/)
+- [https://medium.com/@gerbentempelman/comparing-hyperparameter-optimization-frameworks-in-python-a-conceptual-and-pragmatic-approach-24d9baa1cc69](https://medium.com/@gerbentempelman/comparing-hyperparameter-optimization-frameworks-in-python-a-conceptual-and-pragmatic-approach-24d9baa1cc69)
+
