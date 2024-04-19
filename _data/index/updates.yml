@@ -8,3 +8,6 @@
 - date: 2024-03-14
   description:
     - desc: "New post 'Piece of Pi: Estimating Pi by Monte Carlo Simulation'"
+- date: 2024-04-19
+  description:
+    - desc: "New post 'Unlocking Model Potential: Exploring Hyperparameter Tuning Strategies for Maximum Efficiency'"

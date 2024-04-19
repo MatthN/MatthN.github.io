@@ -6,7 +6,7 @@ categories: [Data Science]
 tags: [hyperparameter tuning, Bayesian optimization, scikit-optimize, optuna, xgboost]
 comments: true
 image:
-  feature: 
+  feature: /posts/BayesOpt/Feature_image.jpg
   credit: 
   creditlink: 
 ---
