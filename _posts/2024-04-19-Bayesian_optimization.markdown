@@ -1,15 +1,17 @@
 ---
 layout: post
-title: "Bayesian Optimization"
-excerpt: "Test"
+title: "Unlocking Model Potential: Exploring Hyperparameter Tuning Strategies for Maximum Efficiency"
+excerpt: "Optimizing a machine learning model often involves the relentless pursuit of the ideal configuration, a task that can seem never-ending. In this post, I aim to delve deeper into the realm of hyperparameter tuning, focusing specifically on the powerful technique of Bayesian optimization. I'll guide you through understanding how this algorithm operates, its distinct advantages, as well as its inherent limitations. Furthermore, I'll provide practical insights into implementing Bayesian optimization using popular libraries like scikit-optimize and Optuna. Join me on this journey as we uncover the intricacies of hyperparameter tuning and unlock the potential of your machine learning models."
 categories: [Data Science]
-tags: [optimization, Bayesian optimization]
+tags: [hyperparameter tuning, Bayesian optimization, scikit-optimize, optuna, xgboost]
 comments: true
 image:
   feature: 
   credit: 
   creditlink: 
 ---
+
+Optimizing a machine learning model often involves the relentless pursuit of the ideal configuration, a task that can seem never-ending. In this post, I aim to delve deeper into the realm of hyperparameter tuning, focusing specifically on the powerful technique of Bayesian optimization. I'll guide you through understanding how this algorithm operates, its distinct advantages, as well as its inherent limitations. Furthermore, I'll provide practical insights into implementing Bayesian optimization using popular libraries like scikit-optimize and Optuna. Join me on this journey as we uncover the intricacies of hyperparameter tuning and unlock the potential of your machine learning models.
 
 ## Model Parameters vs. Hyperparameters
 In machine learning we look for a suitable (mathematical) model that can be fitted to training data in order to make predictions about unseen data points. During the fitting the model learns the values of its parameters by optimizing a specific metric (e.g., root mean squared error). Examples of model parameters are the coefficients of linear model, weights in a neural network, or the feature and its split value in a decision tree.
@@ -21,7 +23,7 @@ Hyperparameters are set before model training. They impact the model behavior.
 
 Tuning the model's hyperparameters can become quite complex due to their number, types (discrete, continuous, categorical, Boolean) and interdependence. Examples of one hyperparameter impacting the value of another are the learning rate and batch size in gradient descent, the number of clusters and distance metric in K-means clustering, or the window size and forecast horizon in time series forecasting.
 
-## Hyperparameter tuning
+## Strategies for Hyperparameter tuning
 ### Grid Search
 The simplest way to approach this task is to create a grid where each point represents a combination of hyperparameter values and then test every configuration. This is the approach that I took to find the optimal number of estimators for random forest and the XGBoost regressors [here]({{ site.url }}/articles/2024-03/Predicting-house-prices). However, this ignored the fact that there are many more hyperparameters that can be tuned for these models. Take for example the XGBoost regressor from before.
 
@@ -301,8 +303,11 @@ study = optuna.create_study(direction='minimize', sampler=GPSampler(n_startup_tr
 study.optimize(objective, n_trials=10)
 ```
 
+Optuna does not seem to have as many configuration options here. The acquisition function is the log expected improvement. There does not seem to be a way to set $$\xi$$. The kernel is a Matern kernel and also this does not seem configurable.
+
 ## Conclusion
-Once the hyperparameter space becomes large there can be a clear upside to using Bayesian optimization compared to random search or grid search. The algorithm explores the search space in a more efficient way. This comes with the downside that parallelization is much more difficult.
+As the hyperparameter space expands, Bayesian optimization emerges as a compelling choice over other methods like random search or grid search. Its ability to navigate the search space efficiently offers a clear advantage. However, it's essential to acknowledge that this efficiency comes at a cost – the complexity of parallelization increases significantly. Despite this challenge, there is a clear benefit of using Bayesian optimization in optimizing complex machine learning models. By understanding its nuances and leveraging its strengths, practitioners can unlock the full potential of their models and pave the way for groundbreaking advancements in the field of machine learning.
+
 
 ## Resources
 - [Liu, P. (2023). Bayesian Optimization: Theory and Practice Using Python (1st ed.). Apress Berkeley, CA. https://doi.org/10.1007/978-1-4842-9063-7](https://doi.org/10.1007/978-1-4842-9063-7)
